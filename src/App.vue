@@ -1,60 +1,130 @@
-<template>
-  <v-app>
-    <v-app-bar
-      app
-      color="primary"
+<template lang="pug">
+  v-app
+    v-toolbar(
+      color="cyan darken-1"
       dark
-    >
-      <div class="d-flex align-center">
-        <v-img
-          alt="Vuetify Logo"
-          class="shrink mr-2"
-          contain
-          src="https://cdn.vuetifyjs.com/images/logos/vuetify-logo-dark.png"
-          transition="scale-transition"
-          width="40"
-        />
+      flat
+      extension-height="40"
+    )
+      v-app-bar-nav-icon
 
-        <v-img
-          alt="Vuetify Name"
-          class="shrink mt-1 hidden-sm-and-down"
-          contain
-          min-width="100"
-          src="https://cdn.vuetifyjs.com/images/logos/vuetify-name-dark.png"
-          width="100"
-        />
-      </div>
+      v-toolbar-title WATERMARKING
 
-      <v-spacer></v-spacer>
+      v-spacer
 
-      <v-btn
-        href="https://github.com/vuetifyjs/vuetify/releases/latest"
-        target="_blank"
-        text
-      >
-        <span class="mr-2">Latest Release</span>
-        <v-icon>mdi-open-in-new</v-icon>
-      </v-btn>
-    </v-app-bar>
+      v-tooltip(bottom)
+        template(v-slot:activator="{ on, attrs }")
+          v-btn(
+            icon
+            dark
+            v-bind="attrs"
+            v-on="on"
+          )
+            v-icon mdi-restart
+        span Reset
 
-    <v-main>
-      <HelloWorld/>
-    </v-main>
-  </v-app>
+      v-menu(bottom left :offset-y="true")
+        template(v-slot:activator="{ on, attrs }")
+
+          v-btn(
+            dark
+            icon
+            v-bind="attrs"
+            v-on="on"
+          )
+            v-icon mdi-dots-vertical
+
+
+
+        v-list
+          v-list-item(
+            v-for="(item, i) in items"
+            :key="i"
+          )
+            v-list-item-title {{ item.title }}
+
+
+      template(v-slot:extension)
+        v-tabs(
+          v-model="model"
+          centered
+          slider-color="yellow"
+        )
+          v-tab(:href="`#insert`") Insert
+          v-tab(:href="`#extract`") Extract
+
+    v-main
+
+      v-tabs-items(v-model="model")
+        v-tab-item(:value="`insert`")
+          Insert
+               
+        v-tab-item(:value="`extract`")
+          Extract
+
+       
+    //- footer 
+    v-footer(
+        dark
+        padless
+      )
+        v-card(
+          flat
+          tile
+          width="100%"
+          class="indigo lighten-1 white--text text-center"
+        )
+          v-card-text
+            v-btn(
+              v-for="icon in icons"
+              :key="icon"
+              class="mx-4 white--text"
+              icon
+            )
+              v-icon(size="24px") {{ icon }}
+              
+
+          v-card-text(class="white--text pt-0")
+            | Este es el pie de página lolool olollollo llolollools
+
+          v-divider
+
+          v-card-text(class="white--text") {{ new Date().getFullYear() }} — 
+            strong Equipo 3
+
+      
+
+
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld';
+import Insert from './components/Insert';
+import Extract from './components/Extract';
 
 export default {
   name: 'App',
 
   components: {
-    HelloWorld,
+    Insert,
+    Extract,
   },
 
   data: () => ({
-    //
+    model: 'tab-2',
+    text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+    icons: [
+        'mdi-heart'
+      ],
+    items: [
+        { title: 'Ayuda' },
+      ],
   }),
 };
 </script>
+
+<style scoped>
+.left-marg {
+  margin-left: 0.6rem;
+}
+
+</style>
