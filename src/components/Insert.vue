@@ -69,7 +69,7 @@
     v-row
       v-col(cols="12" md="6" align="center")
         img(src="" ref="imgd1" class="img-base")
-        canvas(id="imgdest1" ref="imgdest1" class="imgcanvas")
+        canvas(id="imgdest1" ref="imgdest1" class="imgcanvas3")
 
     v-row
       v-col(cols="12" md="12")
@@ -207,21 +207,29 @@
         }
 
         let ctx = src.getContext('2d')
-        let wmax = 500
+        // let wmax = 500
+
+        // img.onload = function() {
+        //   if( img.width>wmax ) {
+        //     h = img.height*(wmax/img.width)
+        //     w = wmax
+        //     src.height = h
+        //     src.width = w          
+        //   }
+        //   else {
+        //     h = img.height
+        //     w = img.width
+        //     src.height = h
+        //     src.width = w    
+        //   }
+        //   ctx.drawImage(img, 0, 0, w, h)
+        // }
 
         img.onload = function() {
-          if( img.width>wmax ) {
-            h = img.height*(wmax/img.width)
-            w = wmax
-            src.height = h
-            src.width = w          
-          }
-          else {
-            h = img.height
-            w = img.width
-            src.height = h
-            src.width = w    
-          }
+          h = img.height
+          w = img.width
+          src.height = h
+          src.width = w          
           ctx.drawImage(img, 0, 0, w, h)
         }
 
@@ -461,14 +469,15 @@
         // cv.imshow(this.$refs.imgsource2, CV);
         let Des = this.desencripta(CV,w,h);
         let R = cv.matFromArray(w/2,h/2,cv.CV_8U,Des)
-        cv.imshow(this.$refs.imgdest1, R);
+        console.log(R)
+        cv.imshow(this.$refs.imgdest1, CV);
 
         this.finished = true 
       },
 
       desencripta(img,w,h) {
 
-        let S = this.genPass(this.pass,(w/2)*(h/2))
+        let S = this.genPass(this.password,(w/2)*(h/2))
         let imgEnc = new Array(h*w);
         for (var i = 0; i < h*w; i++){
           imgEnc[i] = img.data[i];
@@ -540,6 +549,10 @@
   display: none;
 }
 .dcmc {
+  width: 500px;
+  height: 500px;
+}
+.imgcanvas3 {
   width: 500px;
   height: 500px;
 }
