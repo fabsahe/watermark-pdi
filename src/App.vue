@@ -1,7 +1,7 @@
 <template lang="pug">
   v-app
     v-toolbar(
-      color="cyan darken-1"
+      color="grey darken-4"
       dark
       flat
       extension-height="40"
@@ -50,8 +50,8 @@
           centered
           slider-color="yellow"
         )
-          v-tab(:href="`#insert`") Insert
-          v-tab(:href="`#extract`") Extract
+          v-tab(:href="`#insert`") Insertar
+          v-tab(:href="`#extract`") Extraer
 
     v-main
 
@@ -85,7 +85,7 @@
               
 
           v-card-text(class="white--text pt-0")
-            | Este es el pie de página lolool olollollo llolollools
+            | Integrantes:
 
           v-divider
 
@@ -111,7 +111,6 @@ export default {
 
   data: () => ({
     model: 'tab-2',
-    text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
     icons: [
         'mdi-heart'
       ],

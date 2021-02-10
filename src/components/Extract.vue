@@ -17,12 +17,39 @@
         canvas(id="imgsource3" ref="imgsource3" class="imgcanvas")
 
     v-row
+      v-col(cols="12" md="4")
+        v-text-field(
+            v-model="password2"
+            :append-icon="show1 ? 'mdi-eye' : 'mdi-eye-off'"
+            :rules="[rules.required, rules.min]"
+            :type="show1 ? 'text' : 'password'"
+            name="input-10-1"
+            label="Contraseña"
+            hint="6 caracteres minimo"
+            counter
+            @click:append="show2 = !show2"
+        )
+
+    v-row
       v-col(cols="12" md="12")
         v-btn(color="error" 
               :disabled="imgLoadedE==0" 
               :dark="imgLoadedE==1" 
               @click="start()"
-              large) Extract
+              large) Extraer
+
+    v-row
+      div(class="bottom-space")
+      v-divider
+
+    v-row(style="margin-top: -3rem")
+      v-col(cols="12" md="6")
+        v-chip(
+          class="ma-2"
+          color="green"
+          text-color="white"
+          align="left"
+        ) Resultados
 
     v-row
       v-col(cols="12" md="6")
@@ -46,6 +73,13 @@
 
     data: () => ({
       imgLoadedE: 0,
+
+      show2: false,
+      password2: '',
+      rules: {
+        required: value => !!value || 'Campo obligatorio',
+        min: v => v.length >= 6 || '6 caracteres min',
+      },
     }),
 
     methods: {
