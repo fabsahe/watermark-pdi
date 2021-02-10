@@ -23,7 +23,6 @@
         img(src="" ref="imgs1" class="img-base")
         canvas(id="imgsource1" ref="imgsource1" class="imgcanvas" v-show="isjpg")
 
-
         div(id="dcmsource1" ref="dcmsource1" class="dcmc")
           canvas(class="cornerstone-canvas" ref="canvas1" id="canvas1")
 
@@ -33,23 +32,24 @@
 
     v-row
       v-col(cols="12" md="4")
-        v-text-field(
+        v-form(v-model="validpass")
+          v-text-field(
             v-model="password"
             :append-icon="show1 ? 'mdi-eye' : 'mdi-eye-off'"
-            :rules="[rules.required, rules.min]"
+            :rules="[rules.required, rules.min, rules.number]"
             :type="show1 ? 'text' : 'password'"
             name="input-10-1"
             label="Contraseña"
-            hint="6 caracteres minimo"
+            hint="6 caracteres requeridos"
             counter
             @click:append="show1 = !show1"
-        )
+          )
 
     v-row
       v-col(cols="12" md="12")
         v-btn(color="error" 
-              :disabled="!isLoaded" 
-              :dark="isLoaded" 
+              :disabled="!isReady" 
+              :dark="isReady" 
               @click="start()"
               large) Insertar
 
@@ -107,6 +107,7 @@
   import * as cornerstone from "cornerstone-core"
   import * as cornerstoneWADOImageLoader from "cornerstone-wado-image-loader"
   import * as cv from 'opencv.js'
+  import * as fft from 'fft-js'
 
   // Externals
   cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
@@ -129,7 +130,7 @@
   // }
 
   export default {
-    name: 'ImageTest',
+    name: 'Insert',
 
     data: () => ({
       iload1: false,
@@ -138,18 +139,20 @@
       isjpg: false,
       dialog1: false,
       finished: false,
+      validpass: false,
 
       show1: false,
       password: '',
       rules: {
         required: value => !!value || 'Campo obligatorio',
-        min: v => v.length >= 6 || '6 caracteres min',
+        min: v => v.length == 6 || '6 caracteres requeridos',
+        number: v=> !isNaN(v) || 'Sólo se permiten números',
       },
     }),
 
     computed: {
-      isLoaded: function() {
-        return this.iload1 && this.iload2
+      isReady: function() {
+        return this.iload1 && this.iload2 && this.validpass
       }
     },
 
@@ -179,8 +182,6 @@
 
           this.iload1 = true
 
-          console.log( this.isdcm, this.isjpg )
-
         }
         // Si no es DICOM es jpg
         else {
@@ -191,7 +192,6 @@
           let img = this.$refs.imgs1
 
           this.iload1 = true
-          
           img.src = imgurl
 
           this.loadImg(1)
@@ -204,7 +204,6 @@
           let img = this.$refs.imgs2
 
           this.iload2 = true
-          
           img.src = imgurl
 
           this.loadImg(2)  
@@ -243,36 +242,291 @@
 
       },
 
-      start() {
-        let src1 
-        if( this.isdcm )
-          src1 = cv.imread(this.$refs.canvas1)
-        else
-          src1 = cv.imread(this.$refs.imgsource1)
-
-        let src2 = cv.imread(this.$refs.imgsource2)
-        let dst = new cv.Mat()
-        let mask = new cv.Mat();
-        let dtype = -1;
-
-        if( src1.cols != src2.cols || src1.rows != src2.rows  ) {
-            this.dialog1 = true
-            return
+      genPass(k,h){
+        k = parseInt(k);
+        var Sv = new Array(h);
+        var s = new Array(h);
+        Sv[0] = k%Math.PI;
+        var sign = 0;
+        for (let i = 1; i < h-1; i++) {
+            if (Math.abs(Sv[i-1])  > (Math.PI/2)) {
+                sign = 1;
+            }else if (Math.abs(Sv[i-1])  <= (Math.PI/2)){
+                sign = -1;
+            }
+            Sv[i]=  sign * (Sv[i-1]+k+i)%Math.PI;     
         }
 
-        cv.cvtColor(src1, src1, cv.COLOR_RGB2GRAY, 0);
-        cv.cvtColor(src2, src2, cv.COLOR_RGB2GRAY, 0);
+        for (let i = 0; i < h-1; i++) {
+           if (Sv[i]>=0) {
+               s[i] = 1;
+           } 
+           else{
+               s[i]= 0;
+           }
+        }
+        return s;
+      },
 
-        cv.add(src1, src2, dst, mask, dtype);
+      funM(coef, w,imp){
+            let l=w==1?0:1;
 
-        cv.imshow(this.$refs.imgdest1, dst)
-        src1.delete() 
-        src2.delete() 
-        dst.delete()
-        mask.delete()       
+            let f =  0.2589700;
+            let t = (f*coef)/(2*3.1416);
+            let p = Math.round(t);
+            let Mf = (3.1416/f)*(l+2*p);
+
+            if(imp==1){
+              // console.log(f);
+              // console.log(t);
+              // console.log(p);
+              // console.log(Mf);
+            }
+            return Mf;
+      },
+
+      micoef(coef) {
+        var f = 0.2589700;
+        return  Math.cos(f * coef);
+      },
+
+      resizeImg(s,w,h){
+        let nuevo = s; 
+        let dsize = new cv.Size(h,w);
+        cv.resize(nuevo,nuevo, dsize, 0, 0, cv.INTER_AREA);
+        return nuevo;
+      },
+
+      reporteBin(rep,w,h) {
+        let tmp = new Array(w*h);
+        let contT=0;          
+        for (let i = 0; i < w; i++){
+          for (let j = 0; j <h; j++){
+
+            let rs =  rep.ucharPtr(i,j)[0];
+            if(rs>=127){
+              rs = 1;
+            }else{
+              rs =0;
+            }
+            
+            tmp[contT] = rs;
+            contT++;
+            }
+        }
+
+        return tmp;
+      },
+
+      creaMatriz(w,h){
+        var matrix = new Array(w);
+        for(var i=0; i<w; i++) {
+          matrix[i] = new Array(h);
+        }
+        return matrix;
+      },
+
+      toArray(mat,w,h, min){
+        
+        let arr = new Array(w*h);
+        let cont=0;
+        for(let i=0; i<w; i++) {
+          for(let j=0; j < h; j++){
+            let r =Math.round( mat[i][j]- min);
+            arr[cont]=r>255?255:r;
+            cont +=1;
+          }
+        }
+        return arr;
+      },
+
+      mat2Array(mat,w,h){
+        let a= this.creaMatriz(w,h);
+        let cont = 0;
+        for(let i=0; i<w; i++){
+          for (let j=0; j < h; j++){
+            a[i][j] = mat[cont];
+            cont++;
+          }
+        } 
+        return a;      
+      },
+
+      start() {
+        setTimeout( this.run(), 0 )
+      },
+
+      run() {
+
+        let medic
+        if( this.isdcm )
+          medic = cv.imread(this.$refs.canvas1)
+        else
+          medic = cv.imread(this.$refs.imgsource1)
+
+        let report = cv.imread(this.$refs.imgsource2)
+
+        cv.cvtColor(medic, medic, cv.COLOR_RGBA2GRAY, 0); 
+        cv.cvtColor(report, report, cv.COLOR_RGBA2GRAY, 0); 
+        cv.threshold(report, report, 127, 255, cv.THRESH_TOZERO);
+
+        let w = report.rows;
+        let h = report.cols;
+
+        medic =  this.resizeImg(medic,w*2,h*2);
+        w = medic.rows;
+        h = medic.cols;
+
+        report = this.resizeImg(report,w/2,h/2);
+        let T = this.reporteBin(report,w/2,h/2);
+        let S = this.genPass(this.password,(w/2)*(h/2));
+
+        //Pasar img a un array 
+        let imgA = new Array(h*w);
+        for (var i = 0; i < h*w; i++){
+          imgA[i] = medic.data[i];
+        }
+        //Pasar array a matriz
+        let img = this.mat2Array(imgA,w,h);
+
+        //Obtener bloques
+        let bloques =new cv.MatVector();
+
+        for (let i = 0; i < w; i+=2) {
+          for (let j = 0; j < h; j+=2) {
+            let b = new cv.Mat(2,2,cv.CV_32F);
+            b.data32F[0] = img[i][j];
+            b.data32F[1] = img[i][j+1];
+            b.data32F[2] = img[i+1][j];
+            b.data32F[3] = img[i+1][j+1];
+           
+            bloques.push_back(b);
+            b.delete();
+          }          
+        }
+
+        let im=0;
+
+        //Aplicando el algoritmo del
+        let DcW = new cv.MatVector(); 
+        let mp = new cv.Mat.zeros(2,2,cv.CV_32F);
+        let conT = 1;
+        DcW.push_back(mp);
+        for(let i =1;i<bloques.size(); i++){
+          let Dc = bloques.get(i);
+          let DcWi= DcW.get(i-1);
+          let tDc = [Dc.data32F[0],Dc.data32F[1],Dc.data32F[2],Dc.data32F[3]]
+          let tDcW = [DcWi.data32F[0], DcWi.data32F[1],DcWi.data32F[2],DcWi.data32F[3]];
+          let fftDc = fft.fft(tDc);
+          let fftDcW = fft.fft(tDcW);  
+          let ac = fftDc[0][0];
+          let an = fftDcW[0][0];
+          let res = ac-an;
+
+          let tmp = [[0,0],[0,0],[0,0],[0,0]];
+          tmp[0][0] = Math.round(an + (this.funM(res,T[conT]^S[conT],im))); 
+          let iff = fft.ifft(tmp);
+          let be = new cv.Mat(2,2,cv.CV_32F);
+          be.data32F[0] =iff[0][0];
+          be.data32F[1] =iff[1][0];
+          be.data32F[2] =iff[2][0];
+          be.data32F[3] =iff[3][0];
+
+          conT++;
+          DcW.push_back(be);
+          Dc.delete();
+          DcWi.delete();
+
+        }
+
+        //Recuperando img desde bloques
+        
+        let imR = this.creaMatriz(w,h);
+
+
+        let menor = 100;
+        let mayor = -100;
+        let contB=0;
+        for (let i = 0; i <w; i+=2){
+          for (let j = 0; j <h;j+=2){
+            let r = DcW.get(contB);
+            imR[i][j] = r.data32F[0];
+            imR[i][j+1] = r.data32F[1];
+            imR[i+1][j] = r.data32F[2];
+            imR[i+1][j+1] = r.data32F[3];
+
+            menor = menor>=imR[i][j]?imR[i][j]:menor;
+            menor = menor>=imR[i][j+1]?imR[i][j+1]:menor;
+            menor = menor>=imR[i+1][j]?imR[i+1][j]:menor;
+            menor = menor>=imR[i+1][j+1]?imR[i+1][j+1]:menor;
+
+            mayor = mayor<=imR[i][j]?imR[i][j]:mayor;
+            mayor = mayor<=imR[i][j+1]?imR[i][j+1]:mayor;
+            mayor = mayor<=imR[i+1][j]?imR[i+1][j]:mayor;
+            mayor = mayor<=imR[i+1][j+1]?imR[i+1][j+1]:mayor;
+
+            contB+=1;
+          }
+        }
+
+        let imA = this.toArray(imR,w,h,menor);
+        let CV = cv.matFromArray(w,h,cv.CV_8U,imA)
+
+        // cv.imshow(this.$refs.imgsource1, Medica);
+        // cv.imshow(this.$refs.imgsource2, CV);
+        let Des = this.desencripta(CV,w,h);
+        let R = cv.matFromArray(w/2,h/2,cv.CV_8U,Des)
+        cv.imshow(this.$refs.imgdest1, R);
 
         this.finished = true 
       },
+
+      desencripta(img,w,h) {
+
+        let S = this.genPass(this.pass,(w/2)*(h/2))
+        let imgEnc = new Array(h*w);
+        for (var i = 0; i < h*w; i++){
+          imgEnc[i] = img.data[i];
+        }
+      
+        let bloqE =new cv.MatVector();
+        imgEnc = this.mat2Array(imgEnc,w,h);
+
+        for (let i = 0; i < w; i+=2) {
+          for (let j = 0; j < h; j+=2) {
+            let b = new cv.Mat(2,2,cv.CV_32F);
+            b.data32F[0] = imgEnc[i][j];
+            b.data32F[1] = imgEnc[i][j+1];
+            b.data32F[2] = imgEnc[i+1][j];
+            b.data32F[3] = imgEnc[i+1][j+1];
+            bloqE.push_back(b);
+            b.delete();
+          }          
+        }
+
+        let Rec = new Array((h/2)*(w/2));
+        let contR= 1;
+        //Aplicando algoritmo de extraccion
+
+        for (let i=1; i<bloqE.size();i++){
+          let bi = bloqE.get(i);
+          let ba = bloqE.get(i-1);
+          let Vi = [bi.data32F[0], bi.data32F[1], bi.data32F[2],bi.data32F[3]];
+          let Va = [ba.data32F[0], ba.data32F[1],ba.data32F[2],ba.data32F[3]];
+          let fftI = fft.fft(Vi);
+          let fftA = fft.fft(Va); 
+          let r = this.micoef(fftI[0][0]-fftA[0][0]);
+
+          r = r>=0?1:0;
+          r = r^S[contR];
+          r = r>0?255:0;
+        
+          Rec[contR] = r;
+          contR++;            
+        }
+        return Rec;     
+      },
+      
 
       downloadImg() {
         let canvas = this.$refs.imgdest1

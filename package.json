@@ -13,6 +13,7 @@
     "cornerstone-core": "^2.3.0",
     "cornerstone-wado-image-loader": "^3.3.1",
     "express": "^4.17.1",
+    "fft-js": "0.0.12",
     "opencv.js": "^1.2.1",
     "serve-static": "^1.14.1",
     "vue": "^2.6.11",
