@@ -23,7 +23,7 @@
         img(src="" ref="imgs1" class="img-base")
         canvas(id="imgsource1" ref="imgsource1" class="imgcanvas" v-show="isjpg")
 
-        div(id="dcmsource1" ref="dcmsource1" class="dcmc")
+        div(id="dcmsource1" ref="dcmsource1" class="dcmc canvascon")
           canvas(class="cornerstone-canvas" ref="canvas1" id="canvas1")
 
       v-col(cols="12" md="6" align="center")
@@ -69,13 +69,13 @@
     v-row
       v-col(cols="12" md="6" align="center")
         img(src="" ref="imgd1" class="img-base")
-        canvas(id="imgdest1" ref="imgdest1" class="imgcanvas3")
+        canvas(id="imgdest1" ref="imgdest1" class="imgcanvas3" v-show="finished")
 
     v-row
       v-col(cols="12" md="12")
         v-btn(color="success" 
               :disabled="!finished" 
-              :dark="finished" 
+              dark
               @click="downloadImg()"
               large) 
           v-icon mdi-download
@@ -521,12 +521,16 @@
         return Rec;     
       },
       
+      nameId() {
+        return '_' + Math.random().toString(36).substr(2, 9);
+      },
 
       downloadImg() {
         let canvas = this.$refs.imgdest1
         let image = canvas.toDataURL("image/jpg").replace("image/jpg", "image/octet-stream")
         var link = document.createElement('a')
-        link.download = "watermarked.jpg"
+        let filename = "watermarked_"
+        link.download = filename.concat( this.nameId(), '.jpg' )
         link.href = image;
         link.click();
       }
@@ -552,6 +556,7 @@
   width: 500px;
   height: 500px;
 }
+
 .imgcanvas3 {
   width: 500px;
   height: 500px;

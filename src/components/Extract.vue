@@ -14,7 +14,8 @@
     v-row
       v-col(cols="12" md="6")
         img(src="" ref="imgs3" class="img-base")
-        canvas(id="imgsource3" ref="imgsource3" class="imgcanvas3")
+        div(class="canvascon")
+          canvas(id="imgsource3" ref="imgsource3" class="imgcanvas3")
 
     v-row
       v-col(cols="12" md="4")
@@ -54,11 +55,21 @@
     v-row
       v-col(cols="12" md="6")
         img(src="" ref="imgd2" class="img-base")
-        canvas(id="imgdest2" ref="imgdest2" class="imgcanvas")
+        canvas(id="imgdest2" ref="imgdest2" class="imgcanvas3" v-show="finished")
 
       v-col(cols="12" md="6")
         img(src="" ref="imgd3" class="img-base")
-        canvas(id="imgdest3" ref="imgdest3" class="imgcanvas")
+        canvas(id="imgdest3" ref="imgdest3" class="imgcanvas" v-show="finished")
+
+    v-row
+      v-col(cols="12" md="12")
+        v-btn(color="success" 
+              :disabled="!finished" 
+              dark
+              @click="downloadImg()"
+              large) 
+          v-icon mdi-download
+          span Descargar
 
     v-row
       div(class="bottom-space")
@@ -75,6 +86,7 @@
     data: () => ({
       imgLoadedE: false,
       validpass2: false,
+      finished: false,
 
       show2: false,
       password: '',
@@ -244,8 +256,22 @@
         
         let R = cv.matFromArray(w/2,h/2,cv.CV_8U,rec)
    
-        cv.imshow(this.$refs.imgdest2, R); 
+        cv.imshow(this.$refs.imgdest2, R)
+        this.finished = true 
+      },
 
+      nameId() {
+        return '_' + Math.random().toString(36).substr(2, 9);
+      },
+
+      downloadImg() {
+        let canvas = this.$refs.imgdest2
+        let image = canvas.toDataURL("image/jpg").replace("image/jpg", "image/octet-stream")
+        var link = document.createElement('a')
+        let filename = "report_"
+        link.download = filename.concat( this.nameId(), '.jpg' )
+        link.href = image;
+        link.click();
       }
       // fin de los metodos      
     }
@@ -269,4 +295,5 @@
   width: 500px;
   height: 500px;
 }
+
 </style>
