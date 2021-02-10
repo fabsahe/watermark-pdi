@@ -53,21 +53,6 @@
               @click="start()"
               large) Insertar
 
-        v-dialog(
-          v-model="dialog1"
-          max-width="340"
-        )
-
-          v-card
-            v-card-title(class="headline") ERROR
-            v-card-text Las imágenes deben ser del mismo tamaño
-            v-card-actions
-              v-spacer
-                v-btn(
-                color="green darken-1"
-                text
-                @click="dialog1 = false"
-                ) Ok
     v-row
       div(class="bottom-space")
       v-divider
