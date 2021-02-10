@@ -14,27 +14,27 @@
     v-row
       v-col(cols="12" md="6")
         img(src="" ref="imgs3" class="img-base")
-        canvas(id="imgsource3" ref="imgsource3" class="imgcanvas")
+        canvas(id="imgsource3" ref="imgsource3" class="imgcanvas3")
 
     v-row
       v-col(cols="12" md="4")
-        v-text-field(
-            v-model="password2"
-            :append-icon="show1 ? 'mdi-eye' : 'mdi-eye-off'"
-            :rules="[rules.required, rules.min]"
-            :type="show1 ? 'text' : 'password'"
-            name="input-10-1"
+        v-form(v-model="validpass2")
+          v-text-field(
+            v-model="password"
+            :append-icon="show2 ? 'mdi-eye' : 'mdi-eye-off'"
+            :rules="[rules.required, rules.min, rules.number]"
+            :type="show2 ? 'text' : 'password'"
+            name="input-10-2"
             label="Contraseña"
-            hint="6 caracteres minimo"
+            hint="6 caracteres requeridos"
             counter
             @click:append="show2 = !show2"
-        )
-
+          )
     v-row
       v-col(cols="12" md="12")
         v-btn(color="error" 
-              :disabled="imgLoadedE==0" 
-              :dark="imgLoadedE==1" 
+              :disabled="!isReady" 
+              :dark="isReady" 
               @click="start()"
               large) Extraer
 
@@ -67,20 +67,29 @@
 
 <script>
   import * as cv from 'opencv.js'
+  import * as fft from 'fft-js'
 
   export default {
     name: 'ImageTest',
 
     data: () => ({
-      imgLoadedE: 0,
+      imgLoadedE: false,
+      validpass2: false,
 
       show2: false,
-      password2: '',
+      password: '',
       rules: {
         required: value => !!value || 'Campo obligatorio',
-        min: v => v.length >= 6 || '6 caracteres min',
+        min: v => v.length == 6 || '6 caracteres requeridos',
+        number: v=> !isNaN(v) || 'Sólo se permiten números',
       },
     }),
+
+    computed: {
+      isReady: function() {
+        return this.imgLoadedE && this.validpass2
+      }
+    },
 
     methods: {
 
@@ -89,7 +98,7 @@
         let img = this.$refs.imgs3
 
         img.src = imgurl
-        this.imgLoadedE = 1
+        this.imgLoadedE = true
         this.loadImg()
       },
 
@@ -101,44 +110,141 @@
 
         let ctx = src.getContext('2d')
 
+        // img.onload = function() {
+        //   if( img.width>550 ) {
+        //     h = img.height*(550/img.width)
+        //     w = 550
+        //     src.height = h
+        //     src.width = w          
+        //   }
+        //   else {
+        //     h = img.height
+        //     w = img.width
+        //     src.height = h
+        //     src.width = w    
+        //   }
+        //   ctx.drawImage(img, 0, 0, w, h)
+        // }
+
         img.onload = function() {
-          if( img.width>550 ) {
-            h = img.height*(550/img.width)
-            w = 550
-            src.height = h
-            src.width = w          
-          }
-          else {
-            h = img.height
-            w = img.width
-            src.height = h
-            src.width = w    
-          }
+          h = img.height
+          w = img.width
+          src.height = h
+          src.width = w          
           ctx.drawImage(img, 0, 0, w, h)
         }
 
       },
 
+      genPass(k,h){
+        k = parseInt(k);
+        var Sv = new Array(h);
+        var s = new Array(h);
+        Sv[0] = k%Math.PI;
+        var sign = 0;
+        for (let i = 1; i < h-1; i++) {
+            if (Math.abs(Sv[i-1])  > (Math.PI/2)) {
+                sign = 1;
+            }else if (Math.abs(Sv[i-1])  <= (Math.PI/2)){
+                sign = -1;
+            }
+            Sv[i]=  sign * (Sv[i-1]+k+i)%Math.PI;     
+        }
+
+        for (let i = 0; i < h-1; i++) {
+           if (Sv[i]>=0) {
+               s[i] = 1;
+           } 
+           else{
+               s[i]= 0;
+           }
+        }
+        return s;
+      },
+
+      micoef(coef) {
+        var f = 0.2589700;
+        return  Math.cos(f * coef);
+      },
+
+      creaMatriz(w,h){
+        var matrix = new Array(w);
+        for(var i=0; i<w; i++) {
+          matrix[i] = new Array(h);
+        }
+        return matrix;
+      },
+
+      mat2Array(mat,w,h){
+        let a= this.creaMatriz(w,h);
+        let cont = 0;
+        for(let i=0; i<w; i++){
+          for (let j=0; j < h; j++){
+            a[i][j] = mat[cont];
+            cont++;
+          }
+        } 
+        return a;      
+      },      
+
       start() {
-        let src = cv.imread(this.$refs.imgsource3)
-        let dst2 = new cv.Mat()
+
+        let medic = cv.imread(this.$refs.imgsource3)
+
+        cv.cvtColor(medic, medic, cv.COLOR_RGBA2GRAY, 0); 
+
+        let pass = this.password;
+        let w = medic.rows;
+        let h = medic.cols;
+
+        let img = medic;
+
+
+        let S = this.genPass(pass,(w/2)*(h/2))
+        let imgEnc = new Array(h*w);
+        for (var i = 0; i < h*w; i++){
+          imgEnc[i] = img.data[i];
+        }
+      
+        let bloqE =new cv.MatVector();
+        imgEnc = this.mat2Array(imgEnc,w,h);
+
+        for (let i = 0; i < w; i+=2) {
+          for (let j = 0; j < h; j+=2) {
+            let b = new cv.Mat(2,2,cv.CV_32F);
+            b.data32F[0] = imgEnc[i][j];
+            b.data32F[1] = imgEnc[i][j+1];
+            b.data32F[2] = imgEnc[i+1][j];
+            b.data32F[3] = imgEnc[i+1][j+1];
+            bloqE.push_back(b);
+            b.delete();
+          }          
+        }
+
+        let rec = new Array((h/2)*(w/2));
+        let contR= 1;
+        //Aplicando algoritmo de extraccion
+        //console.log(S);
+        for (let i=1; i<bloqE.size();i++){
+          let bi = bloqE.get(i);
+          let ba = bloqE.get(i-1);
+          let Vi = [bi.data32F[0], bi.data32F[1], bi.data32F[2],bi.data32F[3]];
+          let Va = [ba.data32F[0], ba.data32F[1],ba.data32F[2],ba.data32F[3]];
+          let fftI = fft.fft(Vi);
+          let fftA = fft.fft(Va); 
+          let r = this.micoef(fftI[0][0]-fftA[0][0]);
+
+          r = r>=0?1:0;
+          r = r^S[contR];
+          r = r>0?255:0;
         
-        let dst3 = new cv.Mat();
-        let ksize = new cv.Size(5, 5);
-
-
-        cv.cvtColor(src, src, cv.COLOR_RGB2GRAY, 0);
-        // You can try more different parameters
-        cv.Laplacian(src, dst2, cv.CV_8U, 1, 1, 0, cv.BORDER_DEFAULT);
-
-        // You can try more different parameters
-        cv.GaussianBlur(src, dst3, ksize, 0, 0, cv.BORDER_DEFAULT);
-
-        cv.imshow(this.$refs.imgdest2, dst2)
-        cv.imshow(this.$refs.imgdest3, dst3)
-        src.delete();        
-        dst2.delete()  
-        dst3.delete()    
+          rec[contR] = r;
+          contR++;            
+          }
+        
+        let R = cv.matFromArray(w/2,h/2,cv.CV_8U,rec)
+   
+        cv.imshow(this.$refs.imgdest2, R); 
 
       }
       // fin de los metodos      
@@ -158,5 +264,9 @@
 }
 .bottom-space {
   height: 5rem;
+}
+.imgcanvas3 {
+  width: 500px;
+  height: 500px;
 }
 </style>
